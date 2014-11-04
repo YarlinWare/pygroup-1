@@ -20,12 +20,12 @@ def grabCategories(cursor, table):
     return variables
 
 def buildDataDictionary(cursor, table):
-    data = list()
+    data = dict()
     sql_command = "select * from %s" % table
     cursor.execute(sql_command)
     cols = [column[0] for column in cursor.description]
     for row in cursor.fetchall():
-        data.append(dict(zip(cols,row)))
+        data[row[0]] = dict(zip(cols,row))
     return(data)
 
 def getCategoryLevels(cursor, table, variables):
@@ -34,7 +34,7 @@ def getCategoryLevels(cursor, table, variables):
         data[v] = list()
         sql_command = "select %s, count(1) from %s group by %s" % (v, table, v)
         for row in cursor.execute(sql_command):
-            data[v].append((row[0], row[1]))
+            data[v].append((row[0], float(row[1])))
     return(data)
 
 def getNumericalMetrics(cursor, table, variables):
