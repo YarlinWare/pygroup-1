@@ -1,3 +1,9 @@
+#
+# This program creates a python dictionary containing the data
+# in the format needed for main.py
+#
+# Copyright (C) 2014,  Oscar Dowson
+#
 import pyodbc
 
 def connectToDatabase(server, database, uid=None, pwd=None):
@@ -45,3 +51,16 @@ def getNumericalMetrics(cursor, table, variables):
         for row in cursor.execute(sql_command):
             data[v] = dict(zip(metrics, row))
     return(data)
+
+
+def getDataFromDB(server, database, entity_data_table, variable_classification_table):
+    con, cursor = connectToDatabase(server, database)
+    classification = grabCategories(cursor, variable_classification_table)
+    entity_data = buildDataDictionary(cursor, entity_data_table)
+    categorical = getCategoryLevels(cursor, entity_data_table, classification)
+    numerical = getNumericalMetrics(cursor, entity_data_table, classification)
+    db_data = dict()
+    db_data['entity_data'] = entity_data
+    db_data['categorical_data'] = categorical
+    db_data['numerical_data'] = numerical
+    return db_data

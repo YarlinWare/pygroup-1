@@ -1,4 +1,9 @@
-import database as db
+#
+# This program takes a set of entities and divides them into groups
+# based on numerical and categorical variables
+#
+# Copyright (C) 2014,  Oscar Dowson
+#
 from pulp import *
 
 
@@ -137,7 +142,7 @@ def getCategoricalSolutionQuality(allocation, variables, categorical):
 
 
 def getSolutionQuality(allocation, data, variables):
-    quality = {'numerical':getNumericalSolutionQuality(allocation, entity = data['entity_data'], data['numerical_data']),
+    quality = {'numerical':getNumericalSolutionQuality(allocation, data['entity_data'], data['numerical_data']),
                'categorical':getCategoricalSolutionQuality(allocation, variables, data['categorical_data'])}
     return quality
 
@@ -152,35 +157,9 @@ def var(x, u=None):
     return sum([pow(i - u, 2) for i in x])
 
 
-def getDataFromDB(server, database, entity_data_table, variable_classification_table):
-    con, cursor = db.connectToDatabase(server, database)
-    classification = db.grabCategories(cursor, variable_classification_table)
-    entity_data = db.buildDataDictionary(cursor, entity_data_table)
-    categorical = db.getCategoryLevels(cursor, entity_data_table, classification)
-    numerical = db.getNumericalMetrics(cursor, entity_data_table, classification)
-    db_data = dict()
-    db_data['entity_data'] = entity_data
-    db_data['categorical_data'] = categorical
-    db_data['numerical_data'] = numerical
-    return db_data
-
-
 def createAndRunModel(data, n_groups, time_limit):
     model, variables = createProblem(data, n_groups)
     model.solve(solvers.PULP_CBC_CMD(maxSeconds=time_limit))
     allocation = extractResults(variables)
     quality = getSolutionQuality(allocation, data, variables)
     return allocation, quality    
-
-
-# =================================================
-server = '.'
-database = 'enggen403'
-entity_data_table = 'class_data'
-variable_classification_table = 'categories'
-data = getDataFromDB(server, database, entity_data_table, variable_classification_table)
-
-n_groups = 23
-time_limit = 30
-
-allocation, quality = createAndRunModel(data, n_groups, time_limit)
