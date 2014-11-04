@@ -7,9 +7,11 @@ This software takes a set of entities and divides them into equal groups based o
 
 + For numerical variables, the model attempts to make the mean and variance of the variable the same for every group.
 
-It is based on a similar, Excel based solution group-allocator (https://github.com/odow/group-allocator). 
+It is based on a similar, Excel based solution: group-allocator (https://github.com/odow/group-allocator). 
 
 Opti-Group can read data either from a database or tab-delimited flat files.
+
+Check the example.py file for usage and instructions.
 
 
 ## Requirements
