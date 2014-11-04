@@ -10,7 +10,7 @@ It is based on a similar, Excel based solution group-allocator (https://github.c
 
 + Python 2.7
 + PuLP, an LP modeller for Python, which you can get here: https://projects.coin-or.org/PuLP
-+PYODBC which you can get here:
++ PYODBC which you can get here:
 https://code.google.com/p/pyodbc/downloads/list
 
 ## Files
@@ -18,5 +18,5 @@ https://code.google.com/p/pyodbc/downloads/list
 + model.py - python code that creates and solves optimisation model given an appropriate dataset.
 + example.py - example usage
 
-# Licensing
+## Licensing
 This software is distributed under the GNU GPLv2.0

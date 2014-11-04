@@ -159,7 +159,10 @@ def var(x, u=None):
 
 def createAndRunModel(data, n_groups, time_limit):
     model, variables = createProblem(data, n_groups)
-    model.solve(solvers.PULP_CBC_CMD(maxSeconds=time_limit))
+    try:
+        model.solve(solvers.COIN_CMD(maxSeconds=time_limit))
+    except:
+        model.solve(solvers.PULP_CBC_CMD(maxSeconds=time_limit))
     allocation = extractResults(variables)
     quality = getSolutionQuality(allocation, data, variables)
     return allocation, quality    

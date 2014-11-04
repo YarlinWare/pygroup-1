@@ -53,8 +53,8 @@ def getNumericalMetrics(cursor, table, variables):
     return(data)
 
 
-def getDataFromDB(server, database, entity_data_table, variable_classification_table):
-    con, cursor = connectToDatabase(server, database)
+def getDataFromDB(server, database, entity_data_table, variable_classification_table, uid=None, pwd=None):
+    con, cursor = connectToDatabase(server, database, uid, pwd)
     classification = grabCategories(cursor, variable_classification_table)
     entity_data = buildDataDictionary(cursor, entity_data_table)
     categorical = getCategoryLevels(cursor, entity_data_table, classification)
