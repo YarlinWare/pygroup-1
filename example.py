@@ -11,6 +11,8 @@ import model
 # Will make this easier in future.  
 #
 
+# Set this flag to true if you have data in a database
+use_database = False
 
 #
 # There should be two tables in your database.
@@ -38,23 +40,22 @@ import model
 #   BB1 |   AA  |   3.0 |   Z
 #
 
-# location of server. '.' = localhost
-server = '.'
+if use_database:
+    server = '.'                # location of server. '.' = localhost
+    database = 'enggen403'      # name of database
+    entity_tab = 'class_data'   # name of entity_classification_table
+    class_tab = 'categories'    # name of entity_classification_table
+    # dictionary containing data
+    data = dataio.getDataFromDB(server, database, entity_tab, class_table)
+else:
+    f_entity = 'entity_data.txt'    # name of entity_classification_table
+    f_class = 'classification.txt'  # name of entity_classification_table
+    # dictionary containing data
+    data = dataio.getDataFromFlatFiles(f_class, f_entity)
 
-# name of database
-database = 'enggen403'
-
-# name of entity_classification_table
-entity_data_table = 'class_data'
-
-# name of entity_classification_table
-variable_classification_table = 'categories'
-
-# dictionary containing data
-data = dataio.getDataFromDB(server, database, entity_data_table, variable_classification_table)
 
 # number of groups to divide into
-n_groups = 23
+n_groups = 2
 
 # time limit for optimisation (seconds)
 time_limit = 30
@@ -67,3 +68,4 @@ time_limit = 30
 # Quality is a dictionary containing statistical metrics of solution quality
 #
 allocation, quality = model.createAndRunModel(data, n_groups, time_limit)
+
