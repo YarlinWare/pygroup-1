@@ -5,6 +5,8 @@ This software takes a set of entities and divides them into equal groups based o
 
 It is based on a similar, Excel based solution group-allocator (https://github.com/odow/group-allocator). 
 
+Opti-Group can read data either from a database or tab-delimited flat files.
+
 
 ## Requirements
 
@@ -17,6 +19,8 @@ https://code.google.com/p/pyodbc/downloads/list
 + dataio.py - python code for getting data in appropriate format
 + model.py - python code that creates and solves optimisation model given an appropriate dataset.
 + example.py - example usage
++ classification.txt - example file showing format. Used by example.py
++ entity_data.txt - example file showing format. Used by example.py
 
 ## Licensing
 This software is distributed under the GNU GPLv2.0
