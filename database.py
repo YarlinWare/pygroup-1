@@ -28,10 +28,20 @@ def buildDataDictionary(cursor, table):
         data.append(dict(zip(cols,row)))
     return(data)
 
-server = '.'
-database = 'enggen403'
+def getCategoryLevels(cursor, table, variables):
+    data = dict()
+    for v in variables['categorical']:
+        data[v] = list()
+        sql_command = "select %s, count(1) from %s group by %s" % (v, table, v)
+        for row in cursor.execute(sql_command):
+            data[v].append((row[0], row[1]))
+    return(data)
 
-con, cursor = connectToDatabase(server, database)
-
-variables = grabCategories(cursor, 'categories')
-data = buildDataDictionary(cursor, 'class_data')
+def getNumericalMetrics(cursor, table, variables):
+    data = dict()
+    metrics = ['mean', 'var']
+    for v in variables['numerical']:
+        sql_command = "select avg(%s), var(%s) from %s" % (v, v, table)
+        for row in cursor.execute(sql_command):
+            data[v] = dict(zip(metrics, row))
+    return(data)
