@@ -3,6 +3,10 @@ Opti-Group
 
 This software takes a set of entities and divides them into equal groups based on numeric and categorical variables.
 
++ For categorical variables, the model attempts to allocate entities so there are an equal number of entities who correspond to a particular category in each group.
+
++ For numerical variables, the model attempts to make the mean and variance of the variable the same for every group.
+
 It is based on a similar, Excel based solution group-allocator (https://github.com/odow/group-allocator). 
 
 Opti-Group can read data either from a database or tab-delimited flat files.
