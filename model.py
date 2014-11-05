@@ -7,6 +7,9 @@
 from pulp import *
 
 
+#
+# This section deals with partitioning entities into equitable groups
+#
 def createGroups(n_groups, n_entities):
     GROUPS = range(1, n_groups+1)
     # Number of groups with floor(n_entities/n_groups) people
@@ -157,12 +160,75 @@ def var(x, u=None):
     return sum([pow(i - u, 2) for i in x])
 
 
-def createAndRunModel(data, n_groups, time_limit):
+def partitionEntities(data, n_groups, time_limit):
     model, variables = createProblem(data, n_groups)
     try:
+        # New PuLP needs this
         model.solve(solvers.COIN_CMD(maxSeconds=time_limit))
     except:
+        # Old PuLP needs this
         model.solve(solvers.PULP_CBC_CMD(maxSeconds=time_limit))
     allocation = extractResults(variables)
     quality = getSolutionQuality(allocation, data, variables)
     return allocation, quality    
+
+
+#
+# Now we want to choose n people that match a distribution as closely as possible
+#
+def createDistributionProblem(db_data, n_people):
+    data = db_data['entity_data']
+    categorical = db_data['categorical_data']
+    numerical = db_data['numerical_data']
+    n_entities = len(data)
+    ENTITIES = data.keys()
+    
+    model = LpProblem('Distribution', LpMinimize)
+    variables = createDistributionVariables(categorical, numerical, ENTITIES)
+    model = createDistObjectiveFunction(model, variables, categorical, numerical)
+    model = addDistEntityConstraints(model, variables, ENTITIES, n_people)
+    model = addDistNumericConstraints(model, data, variables, numerical, n_people)
+    model = addDistCategoricalConstraints(model, data, variables, categorical, n_people)
+    return model, variables
+
+def createDistributionVariables(categorical, numerical, ENTITIES):
+    variables = dict()
+    variables['x'] = LpVariable.dicts('x', ENTITIES, None, None, LpBinary)
+    for c in categorical:
+        variables[c] = LpVariable('%s_violation' % c, 0, None)
+    for v in numerical:
+        variables[v] = dict()
+        variables[v]['mean_p'] = LpVariable('%s_mean_p' % v, 0, None)
+        variables[v]['mean_n'] = LpVariable('%s_mean_n' % v, 0, None)
+        variables[v]['var_p'] = LpVariable('%s_var_p' % v, 0, None)
+        variables[v]['var_n'] = LpVariable('%s_var_n' % v, 0, None)
+    return(variables)
+
+
+def createDistObjectiveFunction(model, variables, categorical, numerical):
+    obj = None
+    for v in numerical:
+        obj += variables[v]['mean_p'] + variables[v]['mean_n']
+        obj += variables[v]['var_p'] + variables[v]['var_n']
+    obj += 1e4 * lpSum([variables[c] for c in categorical])
+    model += obj
+    return model
+
+def addDistEntityConstraints(model, variables, ENTITIES, n):
+    prob += lpSum([variables[x][i] for i in ENTITIES]) == n
+    return model
+
+def addDistNumericConstraints(model, data, variables, numerical, n_people):
+    for v in numerical:
+        model += lpSum([data[i][v] * variables['x'][i] for i in data]) / n_people  - numerical[v]['mean'] == variables[v]['mean_p'] - variables[v]['mean_n']
+        model += lpSum([pow(data[i][v] - numerical[v]['mean'], 2) * variables['x'][i] for i in data])  / n_people - numerical[v]['var'] == variables[v]['var_p'] - variables[v]['var_n']
+    return model
+
+
+def addDistCategoricalConstraints(model, data, variables, categorical, n_people):
+    for g in GROUPS:
+        for c in categorical:
+            for (l, n) in categorical[c]:
+                model += lpSum([variables['x'][i] for i in data if data[i][c]==l]) + variables[c][l] >= int(n * n_people)
+                model += lpSum([variables['x'][i] for i in data if data[i][c]==l]) - variables[c][l] <= int(n * n_people) + 1
+    return model    

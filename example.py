@@ -67,5 +67,5 @@ time_limit = 30
 #
 # Quality is a dictionary containing statistical metrics of solution quality
 #
-allocation, quality = model.createAndRunModel(data, n_groups, time_limit)
+allocation, quality = model.partitionEntities(data, n_groups, time_limit)
 
