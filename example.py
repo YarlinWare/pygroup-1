@@ -12,7 +12,7 @@ import model
 #
 
 # Set this flag to true if you have data in a database
-use_database = False
+use_database = True
 
 #
 # There should be two tables in your database.
@@ -46,12 +46,12 @@ if use_database:
     entity_tab = 'class_data'   # name of entity_classification_table
     class_tab = 'categories'    # name of entity_classification_table
     # dictionary containing data
-    data = dataio.getDataFromDB(server, database, entity_tab, class_table)
+    data = dataio.get_data_from_db(server, database, entity_tab, class_tab)
 else:
     f_entity = 'entity_data.txt'    # name of entity_classification_table
     f_class = 'classification.txt'  # name of entity_classification_table
     # dictionary containing data
-    data = dataio.getDataFromFlatFiles(f_class, f_entity)
+    data = dataio.get_data_from_flatfiles(f_class, f_entity)
 
 
 # number of groups to divide into
@@ -67,5 +67,7 @@ time_limit = 30
 #
 # Quality is a dictionary containing statistical metrics of solution quality
 #
-allocation, quality = model.partitionEntities(data, n_groups, time_limit)
+allocation, quality = model.partition_entities(data, n_groups, time_limit)
 
+n_people = 10
+# allocation, quality = model.create_similar_population(data, n_people, time_limit)
