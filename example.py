@@ -3,13 +3,8 @@
 #
 # Copyright (C) 2014,  Oscar Dowson
 #
-import dataio
-import model
+import pyog
 
-#
-# Presently this is restricted to a SQL Server DB. Modify dataio for others.
-# Will make this easier in future.  
-#
 
 # Set this flag to true if you have data in a database
 
@@ -43,10 +38,10 @@ import model
 # ====================================================================================================================
 f_entity = 'entity_data.txt'                # name of entity_classification_table
 f_class = 'classification.txt'              # name of entity_classification_table
-data1 = dataio.FlatFile(f_class, f_entity)  # data object
+data1 = pyog.FlatFile(f_class, f_entity)  # data object
 n_groups = 2                                # number of groups to divide into
 time_limit = 5                              # time limit for optimisation (seconds)
-partition_model = model.PartitionModel(data1, n_groups)
+partition_model = pyog.PartitionModel(data1, n_groups)
 allocation, quality = partition_model.solve(time_limit)
 
 
@@ -56,10 +51,10 @@ server = '.'                # location of server. '.' = localhost
 database = 'enggen403'      # name of database
 entity_tab = 'class_data'   # name of entity_classification_table
 class_tab = 'categories'    # name of entity_classification_table
-data_a = dataio.DataBase(server, database, entity_tab, class_tab, where='ID > 200')
+data_a = pyog.DataBase(server, database, entity_tab, class_tab, where='ID > 200')
 n_people = 10
-data_b = dataio.DataBase(server, database, entity_tab, class_tab, where='ID <= 200')
-distribution_model = model.DistributionModel(data_a, data_b, n_people)
+data_b = pyog.DataBase(server, database, entity_tab, class_tab, where='ID <= 200')
+distribution_model = pyog.DistributionModel(data_a, data_b, n_people)
 allocation1, quality1 = distribution_model.solve(time_limit)
 print allocation1
 print quality1
