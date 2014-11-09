@@ -12,7 +12,6 @@ import model
 #
 
 # Set this flag to true if you have data in a database
-use_database = False
 
 #
 # There should be two tables in your database.
@@ -40,37 +39,27 @@ use_database = False
 #   BB1 |   AA  |   3.0 |   Z
 #
 
-if use_database:
-    server = '.'                # location of server. '.' = localhost
-    database = 'enggen403'      # name of database
-    entity_tab = 'class_data'   # name of entity_classification_table
-    class_tab = 'categories'    # name of entity_classification_table
-    # data object
-    data = dataio.DataBase(server, database, entity_tab, class_tab)
-else:
-    f_entity = 'entity_data.txt'    # name of entity_classification_table
-    f_class = 'classification.txt'  # name of entity_classification_table
-    # data object
-    data = dataio.FlatFile(f_class, f_entity)
-
-
-# number of groups to divide into
-n_groups = 2
-
-# time limit for optimisation (seconds)
-time_limit = 5
-
-partition_model = model.PartitionModel(data, n_groups)
+# ====================================================================================================================
+# ====================================================================================================================
+f_entity = 'entity_data.txt'                # name of entity_classification_table
+f_class = 'classification.txt'              # name of entity_classification_table
+data1 = dataio.FlatFile(f_class, f_entity)  # data object
+n_groups = 2                                # number of groups to divide into
+time_limit = 5                              # time limit for optimisation (seconds)
+partition_model = model.PartitionModel(data1, n_groups)
 allocation, quality = partition_model.solve(time_limit)
 
-#
-# Allocation is a dictionary containing entity to group allocations
-#   allocation['group-entity'][group] = list of entities in group
-#   allocation['entity-group'][entity] = group
-#
-# Quality is a dictionary containing statistical metrics of solution quality
-#
-#allocation, quality = model.partition_entities(data, n_groups, time_limit)
 
-#n_people = 10
-# allocation, quality = model.create_similar_population(data, n_people, time_limit)
+# ====================================================================================================================
+# ====================================================================================================================
+server = '.'                # location of server. '.' = localhost
+database = 'enggen403'      # name of database
+entity_tab = 'class_data'   # name of entity_classification_table
+class_tab = 'categories'    # name of entity_classification_table
+data_a = dataio.DataBase(server, database, entity_tab, class_tab, where='ID > 200')
+n_people = 10
+data_b = dataio.DataBase(server, database, entity_tab, class_tab, where='ID <= 200')
+distribution_model = model.DistributionModel(data_a, data_b, n_people)
+allocation1, quality1 = distribution_model.solve(time_limit)
+print allocation1
+print quality1

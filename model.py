@@ -7,27 +7,53 @@
 from pulp import *
 
 
-class PartitionModel():
+class Model(object):
 
-    def __init__(self, model_data, n_groups):
+    def __init__(self, name):
+        self.model = LpProblem(name, LpMinimize)
+        return
+
+    @staticmethod
+    def mean(x):
+        return sum(x) / float(len(x))
+
+    def var(self, x, u=None):
+        if u is None:
+            u = self.mean(x)
+        return sum([pow(i - u, 2) for i in x]) / len(x)
+
+    def solve(self, time_limit):
+        try:
+            # New PuLP needs this
+            self.model.solve(solvers.COIN_CMD(maxSeconds=time_limit))
+        except solvers.PulpSolverError:
+            # Old PuLP needs this
+            self.model.solve(solvers.PULP_CBC_CMD(maxSeconds=time_limit))
+        return self.process_solution()
+
+    def process_solution(self):
+        raise NotImplementedError
+
+
+class PartitionModel(Model):
+
+    def __init__(self, model_data, n_groups, name='PartitionModel'):
+        Model.__init__(self, name)
         self.df = model_data
         self.n_entities = len(self.df.data)
         self.entities = self.df.data.keys()
         self.variables = dict()
-
         self.groups, self.group_size = self.create_groups(n_groups, self.n_entities)
         tuples = dict()
         tuples['entity'] = [(e, g) for e in self.entities for g in self.groups]
         for c in self.df.categorical:
             tuples[c] = [(i, g) for (i, n) in self.df.categorical[c] for g in self.groups]
 
-        self.model = LpProblem('Partition', LpMinimize)
         self.create_variables(tuples)
         self.create_objective_function(tuples)
         self.create_entity_constraints()
         self.add_numerical_constraints()
         self.add_categorical_constraints()
-
         return
 
     @staticmethod
@@ -116,16 +142,16 @@ class PartitionModel():
             var_list = list()
             for g in allocation['group-entity']:
                 values = [self.df.data[e][v] for e in allocation['group-entity'][g]]
-                mean_list.append(mean(values))
-                var_list.append(var(values, mean_list[-1]))
+                mean_list.append(self.mean(values))
+                var_list.append(self.var(values, mean_list[-1]))
             quality[v]['mean']['max'] = max(mean_list)
             quality[v]['mean']['min'] = min(mean_list)
-            quality[v]['mean']['mean'] = mean(mean_list)
-            quality[v]['mean']['sd'] = pow(var(mean_list), 0.5)
+            quality[v]['mean']['mean'] = self.mean(mean_list)
+            quality[v]['mean']['sd'] = pow(self.var(mean_list), 0.5)
             quality[v]['var']['max'] = max(var_list)
             quality[v]['var']['min'] = min(var_list)
-            quality[v]['var']['mean'] = mean(var_list)
-            quality[v]['var']['sd'] = pow(var(var_list), 0.5)
+            quality[v]['var']['mean'] = self.mean(var_list)
+            quality[v]['var']['sd'] = pow(self.var(var_list), 0.5)
         return quality
 
     def get_categorical_solution_quality(self, allocation):
@@ -137,8 +163,8 @@ class PartitionModel():
                 violation_list = [self.variables[c][(l, g)].value() for g in allocation['group-entity']]
                 quality[c][l]['max'] = max(violation_list)
                 quality[c][l]['min'] = min(violation_list)
-                quality[c][l]['mean'] = mean(violation_list)
-                quality[c][l]['sd'] = pow(var(violation_list), 0.5)
+                quality[c][l]['mean'] = self.mean(violation_list)
+                quality[c][l]['sd'] = pow(self.var(violation_list), 0.5)
         return quality
 
     def get_solution_quality(self, allocation):
@@ -146,43 +172,24 @@ class PartitionModel():
                    'categorical': self.get_categorical_solution_quality(allocation)}
         return quality
 
-    def solve(self, time_limit):
-        try:
-            # New PuLP needs this
-            self.model.solve(solvers.COIN_CMD(maxSeconds=time_limit))
-        except solvers.PulpSolverError:
-            # Old PuLP needs this
-            self.model.solve(solvers.PULP_CBC_CMD(maxSeconds=time_limit))
+    def process_solution(self):
         allocation = self.extract_results()
         quality = self.get_solution_quality(allocation)
         return allocation, quality
 
 
-def mean(x):
-    return sum(x) / float(len(x))
+class DistributionModel(Model):
 
+    def __init__(self, old_population, new_population, n_people, name='DistributionModel'):
+        Model.__init__(self, name)
 
-def var(x, u=None):
-    if u is None:
-        u = mean(x)
-    return sum([pow(i - u, 2) for i in x]) / len(x)
-
-
-class DistributionModel(object):
-
-    def __init__(self, old_population, new_population, n_people):
-
-        self.model = LpProblem('Distribution', LpMinimize)
-
-        self.entities = old_population.data.keys()
-
+        self.entities = new_population.data.keys()
         self.old_df = old_population
         self.new_df = new_population
 
         self.n_people = n_people
 
         self.variables = self.create_variables()
-
         self.create_objective_function()
         self.add_entity_constraints()
         self.add_numeric_constraints()
@@ -239,17 +246,6 @@ class DistributionModel(object):
     def extract_results(self):
         return [i for i in self.variables['x'] if self.variables['x'][i].value() == 1]
 
-    def solve(self, time_limit):
-        try:
-            # New PuLP needs this
-            self.model.solve(solvers.COIN_CMD(msg=1, maxSeconds=time_limit))
-        except solvers.PulpSolverError:
-            # Old PuLP needs this
-            self.model.solve(solvers.PULP_CBC_CMD(msg=1, maxSeconds=time_limit))
-        allocation = self.extract_results()
-        quality = self.get_solution_quality()
-        return allocation, quality
-
     def get_numerical_solution_quality(self):
         quality = dict()
         for v in self.new_df.numerical:
@@ -271,3 +267,8 @@ class DistributionModel(object):
             'numerical': self.get_numerical_solution_quality(),
             'categorical': self.get_categorical_solution_quality()}
         return quality
+
+    def process_solution(self):
+        allocation = self.extract_results()
+        quality = self.get_solution_quality()
+        return allocation, quality
