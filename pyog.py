@@ -7,6 +7,7 @@
 from pulp import *
 import pyodbc
 import csv
+from pulp import solvers
 
 
 class Model(object):
