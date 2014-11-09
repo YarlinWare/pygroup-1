@@ -8,7 +8,7 @@ import pyodbc
 import csv
 
 
-class DataBase():
+class DataBase(object):
     """
     Class for managing database
     """
@@ -134,77 +134,82 @@ class DataBase():
         return data
 
 
-def grab_ff_categories(filename, delimiter='\t'):
-    variables = {'categorical': list(), 'numerical': list()}
-    with open(filename, 'r') as f:
-        f.readline()
-        while True:
-            items = split_next_line(f, delimiter)
-            if items is None:
-                break
-            if int(items[1]) == 1:
-                variables['categorical'].append(items[0])
-            else:
-                variables['numerical'].append(items[0])
-    return variables
+class FlatFile(object):
 
+    def __init__(self, classification_filepath, entity_filepath, delimiter="\t"):
+        """
 
-def split_next_line(f, delimiter):
-    line = f.readline()
-    if not line:
-        return None
-    line = line.strip()
-    return csv.reader([line], delimiter).next()
+        :param classification_filepath:
+        :param entity_filepath:
+        :return:
+        """
+        self.classification_filepath = classification_filepath
+        self.entity_filepath = entity_filepath
+        self.delimiter = delimiter
 
+        classification = self.get_categories()
+        self.data = self.read_file(self.entity_filepath, classification)
+        self.categorical = self.get_category_levels(classification)
+        self.numerical = self.get_numerical_metrics(classification)
+        return
 
-def build_ff_data_dictionary(filename, classification):
-    data = dict()
-    with open(filename, 'r') as f:
-        headers = split_next_line(f, '\t')
-        while True:
-            items = split_next_line(f, '\t')
-            if items is None:
-                break
-            data[items[0]] = dict(zip(headers, items))
-    for v in classification['numerical']:
-        for i in data:
-            data[i][v] = float(data[i][v])
-    return data
+    def get_categories(self):
+        variables = {'categorical': list(), 'numerical': list()}
+        with open(self.classification_filepath, 'r') as f:
+            f.readline()
+            while True:
+                items = self.split_next_line(f)
+                if items is None:
+                    break
+                if int(items[1]) == 1:
+                    variables['categorical'].append(items[0])
+                else:
+                    variables['numerical'].append(items[0])
+        return variables
 
+    def split_next_line(self, f):
+        line = f.readline()
+        if not line:
+            return None
+        line = line.strip()
+        items = csv.reader([line], delimiter=self.delimiter).next()
+        return items
 
-def get_ff_category_levels(data, variables):
-    cat = dict()
-    for c in variables['categorical']:
-        cat[c] = dict()
-    for i in data:
+    def read_file(self, filename, classification):
+        data = dict()
+        with open(filename, 'r') as f:
+            headers = self.split_next_line(f)
+            while True:
+                items = self.split_next_line(f)
+                if items is None:
+                    break
+                data[items[0]] = dict(zip(headers, items))
+        for v in classification['numerical']:
+            for i in data:
+                data[i][v] = float(data[i][v])
+        return data
+
+    def get_category_levels(self, classification):
+        cat = dict()
+        for c in classification['categorical']:
+            cat[c] = dict()
+        for i in self.data:
+            for c in cat:
+                if self.data[i][c] in cat[c]:
+                    cat[c][self.data[i][c]] += 1
+                else:
+                    cat[c][self.data[i][c]] = 1
+        categorical = dict()
         for c in cat:
-            if data[i][c] in cat[c]:
-                cat[c][data[i][c]] += 1
-            else:
-                cat[c][data[i][c]] = 1
-    categorical = dict()
-    for c in cat:
-        categorical[c] = list()
-        for l in cat[c]:
-            categorical[c].append((l, cat[c][l]))
-    return categorical
+            categorical[c] = list()
+            for l in cat[c]:
+                categorical[c].append((l, cat[c][l]))
+        return categorical
 
-
-def get_ff_numerical_metrics(data, variables):
-    numerical = dict()
-    for v in variables['numerical']:
-        numerical[v] = {'mean': sum([data[i][v] for i in data]) / len(data)}
-        numerical[v]['var'] = sum([pow(data[i][v] - numerical[v]['mean'], 2) for i in data]) / len(data)
-    return numerical
-
-
-def get_data_from_flatfiles(classification_filepath, entity_filepath):
-    classification = grab_ff_categories(classification_filepath)
-    entity_data = build_ff_data_dictionary(entity_filepath, classification)
-    categorical = get_ff_category_levels(entity_data, classification)
-    numerical = get_ff_numerical_metrics(entity_data, classification)
-    ff_data = dict()
-    ff_data['entity_data'] = entity_data
-    ff_data['categorical_data'] = categorical
-    ff_data['numerical_data'] = numerical
-    return ff_data
+    def get_numerical_metrics(self, classification):
+        numerical = dict()
+        for v in classification['numerical']:
+            numerical[v] = {'mean': sum([self.data[i][v] for i in self.data]) / len(self.data)}
+            numerical[v]['var'] = sum([pow(self.data[i][v] - numerical[v]['mean'], 2) for i in self.data])\
+                / len(self.data)
+        return numerical

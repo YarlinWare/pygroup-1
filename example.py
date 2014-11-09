@@ -12,7 +12,7 @@ import model
 #
 
 # Set this flag to true if you have data in a database
-use_database = True
+use_database = False
 
 #
 # There should be two tables in your database.
@@ -45,20 +45,20 @@ if use_database:
     database = 'enggen403'      # name of database
     entity_tab = 'class_data'   # name of entity_classification_table
     class_tab = 'categories'    # name of entity_classification_table
-    # dictionary containing data
+    # data object
     data = dataio.DataBase(server, database, entity_tab, class_tab)
 else:
     f_entity = 'entity_data.txt'    # name of entity_classification_table
     f_class = 'classification.txt'  # name of entity_classification_table
-    # dictionary containing data
-    data = dataio.get_data_from_flatfiles(f_class, f_entity)
+    # data object
+    data = dataio.FlatFile(f_class, f_entity)
 
 
 # number of groups to divide into
 n_groups = 2
 
 # time limit for optimisation (seconds)
-time_limit = 30
+time_limit = 5
 
 partition_model = model.PartitionModel(data, n_groups)
 allocation, quality = partition_model.solve(time_limit)

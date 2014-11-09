@@ -12,7 +12,7 @@ class PartitionModel():
     def __init__(self, model_data, n_groups):
         self.df = model_data
         self.n_entities = len(self.df.data)
-        self.entities = self.df.keys()
+        self.entities = self.df.data.keys()
         self.variables = dict()
 
         self.groups, self.group_size = self.create_groups(n_groups, self.n_entities)
@@ -102,7 +102,7 @@ class PartitionModel():
             if self.variables['x'][(e, g)].value() == 1:
                 allocation['entity-group'][e] = g
                 if g not in allocation['group-entity']:
-                    allocation['group-entity'][g] = list(e)
+                    allocation['group-entity'][g] = [e]
                 else:
                     allocation['group-entity'][g].append(e)
         return allocation
@@ -150,7 +150,7 @@ class PartitionModel():
         try:
             # New PuLP needs this
             self.model.solve(solvers.COIN_CMD(maxSeconds=time_limit))
-        except:
+        except solvers.PulpSolverError:
             # Old PuLP needs this
             self.model.solve(solvers.PULP_CBC_CMD(maxSeconds=time_limit))
         allocation = self.extract_results()
@@ -168,111 +168,106 @@ def var(x, u=None):
     return sum([pow(i - u, 2) for i in x]) / len(x)
 
 
-#
-# Now we want to choose n people that match a distribution as closely as possible
-#
-def create_distribution_problem(db_data, n_people):
-    df = db_data['entity_data']
-    categorical = db_data['categorical_data']
-    numerical = db_data['numerical_data']
-    entities = df.keys()
+class DistributionModel(object):
 
-    model = LpProblem('Distribution', LpMinimize)
-    variables = create_distribution_variables(categorical, numerical, entities)
-    model = create_distribution_objective_function(model, variables, categorical, numerical)
-    model = add_distribution_entity_constraints(model, variables, entities, n_people)
-    model = add_distribution_numeric_constraints(model, data, variables, numerical, n_people)
-    model = add_distribution_categorical_constraints(model, data, variables, categorical, n_people)
-    return model, variables
+    def __init__(self, old_population, new_population, n_people):
 
+        self.model = LpProblem('Distribution', LpMinimize)
 
-def create_distribution_variables(categorical, numerical, entities):
-    variables = dict()
-    variables['x'] = LpVariable.dicts('x', entities, None, None, LpBinary)
-    for c in categorical:
-        variables[c] = LpVariable.dicts('%s_violation' % c, [a for a, b in categorical[c]], 0, None)
-    for v in numerical:
-        variables[v] = dict()
-        variables[v]['mean_p'] = LpVariable('%s_mean_p' % v, 0, None)
-        variables[v]['mean_n'] = LpVariable('%s_mean_n' % v, 0, None)
-        variables[v]['var_p'] = LpVariable('%s_var_p' % v, 0, None)
-        variables[v]['var_n'] = LpVariable('%s_var_n' % v, 0, None)
-    return variables
+        self.entities = old_population.data.keys()
 
+        self.old_df = old_population
+        self.new_df = new_population
 
-def create_distribution_objective_function(model, variables, categorical, numerical):
-    obj = None
-    for v in numerical:
-        obj += variables[v]['mean_p'] + variables[v]['mean_n']
-        obj += variables[v]['var_p'] + variables[v]['var_n']
-    obj += 1e4 * lpSum([variables[c] for c in categorical])
-    model += obj
-    return model
+        self.n_people = n_people
 
+        self.variables = self.create_variables()
 
-def add_distribution_entity_constraints(model, variables, entities, n):
-    model += lpSum([variables['x'][i] for i in entities]) == n
-    return model
+        self.create_objective_function()
+        self.add_entity_constraints()
+        self.add_numeric_constraints()
+        self.add_categorical_constraints()
+        return
 
+    def create_variables(self):
+        variables = dict()
+        variables['x'] = LpVariable.dicts('x', self.entities, None, None, LpBinary)
+        for c in self.new_df.categorical:
+            variables[c] = LpVariable.dicts('%s_violation' % c, [a for a, b in self.new_df.categorical[c]], 0, None)
+        for v in self.new_df.numerical:
+            variables[v] = dict()
+            variables[v]['mean_p'] = LpVariable('%s_mean_p' % v, 0, None)
+            variables[v]['mean_n'] = LpVariable('%s_mean_n' % v, 0, None)
+            variables[v]['var_p'] = LpVariable('%s_var_p' % v, 0, None)
+            variables[v]['var_n'] = LpVariable('%s_var_n' % v, 0, None)
+        return variables
 
-def add_distribution_numeric_constraints(model, df, variables, numerical, n_people):
-    for v in numerical:
-        model += lpSum([df[i][v] * variables['x'][i] for i in df]) / n_people - numerical[v]["mean"] == \
-            variables[v]['mean_p'] - variables[v]['mean_n']
-        model += lpSum([pow(df[i][v] - numerical[v]['mean'], 2) * variables['x'][i] for i in df]) / n_people - \
-            numerical[v]['var'] == variables[v]['var_p'] - variables[v]['var_n']
-    return model
+    def create_objective_function(self):
+        obj = None
+        for v in self.new_df.numerical:
+            obj += self.variables[v]['mean_p'] + self.variables[v]['mean_n']
+            obj += self.variables[v]['var_p'] + self.variables[v]['var_n']
+        obj += 1e4 * lpSum([self.variables[c] for c in self.new_df.categorical])
+        self.model += obj
+        return
 
+    def add_entity_constraints(self):
+        self.model += lpSum([self.variables['x'][i] for i in self.entities]) == self.n_people
+        return
 
-def add_distribution_categorical_constraints(model, df, variables, categorical, n_people):
-    for c in categorical:
-        for (l, n) in categorical[c]:
-            model += lpSum([variables['x'][i] for i in df if df[i][c] == l]) + variables[c][l] \
-                >= int(n * n_people)
-            model += lpSum([variables['x'][i] for i in df if df[i][c] == l]) - variables[c][l] \
-                <= int(n * n_people) + 1
-    return model
+    def add_numeric_constraints(self):
+        for v in self.new_df.numerical:
+            self.model += lpSum([self.new_df.data[i][v] * self.variables['x'][i] for i in self.new_df.data]) \
+                / self.n_people - self.old_df.numerical[v]["mean"] \
+                == self.variables[v]['mean_p'] - self.variables[v]['mean_n']
+            self.model += lpSum([pow(self.new_df.data[i][v] - self.new_df.numerical[v]['mean'], 2)
+                                * self.variables['x'][i] for i in self.new_df.data]) / self.n_people - \
+                self.old_df.numerical[v]['var'] \
+                == self.variables[v]['var_p'] - self.variables[v]['var_n']
+        return
 
+    def add_categorical_constraints(self):
+        for c in self.new_df.categorical:
+            for (l, n) in self.new_df.categorical[c]:
+                m = self.old_df.categorical[c][1]
+                self.model += lpSum([self.variables['x'][i] for i in self.new_df.data if self.new_df.data[i][c] == l])\
+                    + self.variables[c][l] >= int(m * self.n_people)
+                self.model += lpSum([self.variables['x'][i] for i in self.new_df.data if self.new_df.data[i][c] == l])\
+                    - self.variables[c][l] <= int(m * self.n_people) + 1
+        return
 
-def extract_distribution_results(variables):
-    return [i for i in variables['x'] if variables['x'][i].value() == 1]
+    def extract_results(self):
+        return [i for i in self.variables['x'] if self.variables['x'][i].value() == 1]
 
+    def solve(self, time_limit):
+        try:
+            # New PuLP needs this
+            self.model.solve(solvers.COIN_CMD(msg=1, maxSeconds=time_limit))
+        except solvers.PulpSolverError:
+            # Old PuLP needs this
+            self.model.solve(solvers.PULP_CBC_CMD(msg=1, maxSeconds=time_limit))
+        allocation = self.extract_results()
+        quality = self.get_solution_quality()
+        return allocation, quality
 
-def create_similar_population(df, n_people, time_limit):
-    model, variables = create_distribution_problem(df, n_people)
-    try:
-        # New PuLP needs this
-        model.solve(solvers.COIN_CMD(msg=1, maxSeconds=time_limit))
-    except:
-        # Old PuLP needs this
-        model.solve(solvers.PULP_CBC_CMD(msg=1, maxSeconds=time_limit))
-    allocation = extract_distribution_results(variables)
-    quality = get_distribution_solution_quality(allocation, df, variables)
-    return allocation, quality
+    def get_numerical_solution_quality(self):
+        quality = dict()
+        for v in self.new_df.numerical:
+            quality[v] = dict()
+            quality[v]['mean'] = self.variables[v]['mean_p'] + self.variables[v]['mean_n']
+            quality[v]['var'] = self.variables[v]['var_p'] + self.variables[v]['var_n']
+        return quality
 
+    def get_categorical_solution_quality(self):
+        quality = dict()
+        for c in self.new_df.categorical:
+            quality[c] = dict()
+            for (l, n) in self.new_df.categorical[c]:
+                quality[c][l] = self.new_df.variables[c][l].value()
+        return quality
 
-def get_distribution_numerical_solution_quality(allocation, df, numerical):
-    quality = dict()
-    for v in numerical:
-        quality[v] = dict()
-        x = [df[a][v] for a in allocation]
-        quality[v]['mean'] = abs(mean(x) - numerical[v]['mean']) * 100
-        quality[v]['var'] = abs(var(x, quality[v]['mean']) - numerical[v]['var']) * 100
-    return quality
-
-
-def get_distribution_categorical_solution_quality(variables, categorical):
-    quality = dict()
-    for c in categorical:
-        quality[c] = dict()
-        for (l, n) in categorical[c]:
-            quality[c][l] = variables[c][l].value()
-    return quality
-
-
-def get_distribution_solution_quality(allocation, df, variables):
-    quality = {
-        'numerical': get_distribution_numerical_solution_quality(allocation,
-                                                                 df['entity_data'], df['numerical_data']),
-        'categorical': get_distribution_categorical_solution_quality(variables, df['categorical_data'])}
-    return quality
+    def get_solution_quality(self):
+        quality = {
+            'numerical': self.get_numerical_solution_quality(),
+            'categorical': self.get_categorical_solution_quality()}
+        return quality
