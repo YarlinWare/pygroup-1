@@ -46,7 +46,7 @@ if use_database:
     entity_tab = 'class_data'   # name of entity_classification_table
     class_tab = 'categories'    # name of entity_classification_table
     # dictionary containing data
-    data = dataio.get_data_from_db(server, database, entity_tab, class_tab)
+    data = dataio.DataBase(server, database, entity_tab, class_tab)
 else:
     f_entity = 'entity_data.txt'    # name of entity_classification_table
     f_class = 'classification.txt'  # name of entity_classification_table
@@ -60,6 +60,9 @@ n_groups = 2
 # time limit for optimisation (seconds)
 time_limit = 30
 
+partition_model = model.PartitionModel(data, n_groups)
+allocation, quality = partition_model.solve(time_limit)
+
 #
 # Allocation is a dictionary containing entity to group allocations
 #   allocation['group-entity'][group] = list of entities in group
@@ -67,7 +70,7 @@ time_limit = 30
 #
 # Quality is a dictionary containing statistical metrics of solution quality
 #
-allocation, quality = model.partition_entities(data, n_groups, time_limit)
+#allocation, quality = model.partition_entities(data, n_groups, time_limit)
 
-n_people = 10
+#n_people = 10
 # allocation, quality = model.create_similar_population(data, n_people, time_limit)

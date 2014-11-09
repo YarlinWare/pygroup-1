@@ -8,80 +8,140 @@ import pyodbc
 import csv
 
 
-def connect_to_database(server, database, uid=None, pwd=None):
-    if uid is not None:
-        connection_string = 'DRIVER={SQL Server}; SERVER=%s;DATABASE=%s;UID=%s;PWD=%s' % (server, database, uid, pwd)
-    else:
-        connection_string = 'DRIVER={SQL Server}; SERVER=%s;DATABASE=%s' % (server, database)
-    
-    con = pyodbc.connect(connection_string)
-    return con, con.cursor()
+class DataBase():
+    """
+    Class for managing database
+    """
 
-
-def grab_db_categories(cursor, table):
-    variables = {'categorical': list(), 'numerical': list()}
-    
-    for row in cursor.execute("select * from %s" % table):
-        if int(row.IsCategorical) == 1:
-            variables['categorical'].append(row.Variable)
+    def __init__(self, server, database, entity_data_table, variable_classification_table, uid=None, pwd=None):
+        if uid is not None:
+            # If password specified
+            connection_string = 'DRIVER={SQL Server}; SERVER=%s;DATABASE=%s;UID=%s;PWD=%s' \
+                                % (server, database, uid, pwd)
         else:
-            variables['numerical'].append(row.Variable)
-    return variables
+            # Otherwise
+            connection_string = 'DRIVER={SQL Server}; SERVER=%s;DATABASE=%s' % (server, database)
+
+        # Create connection
+        self.con = pyodbc.connect(connection_string)
+
+        # Create cursor
+        self.cursor = self.con.cursor()
+
+        # Classification of variables
+        classification = self.get_categories(variable_classification_table)
+
+        # Entity Data
+        self.data = self.get_table(entity_data_table)
+
+        # Categorical Variable Data
+        self.categorical = self.get_category_levels(entity_data_table, classification)
+
+        # Numerical Variable Data
+        self.numerical = self.get_numerical_metrics(entity_data_table, classification)
+
+        return
+
+    def get_pk(self, table_name):
+        """
+        Returns list of primary keys associated with table
+        :param table_name: name of table
+        :return: list of tuples (pk_name, col_index)
+        """
+
+        pks = list()
+
+        # Get list of primary keys
+        self.cursor.primaryKeys(table_name)
+
+        for pk in self.cursor.fetchall():
+            # (database_name, schema, table_name, col_name, col_index, pk_name)
+            pks.append(tuple([str(pk[-3]), pk[-2]]))
+        return pks
+
+    def get_table(self, table_name, where_clause=None):
+        """
+        Method for turning table into python dictionary
+        :param table_name: name of table
+        :param where_clause: optional clause to limit rows returned.
+        i.e. where_clause='COLUMN1 > 5 and COLUMN2 <= 10'
+        :return: dictionary[(tuple of pks)][column_name] = value
+        """
+
+        # Get list of primary keys associated with table
+        pks = self.get_pk(table_name)
+
+        data = dict()
+
+        # Create sql command
+        sql_command = "select * from %s" % table_name
+        if where_clause is not None:
+            sql_command += 'where ' + where_clause
+
+        # Execute command
+        self.cursor.execute(sql_command)
+
+        # Get list of columns
+        cols = [column[0] for column in self.cursor.description]
+
+        for row in self.cursor.fetchall():
+            # Create index
+            if len(pks) <= 1:
+                t = row[0]
+            else:
+                t = tuple([row[i-1] for s, i in pks])
+
+            # add data
+            data[t] = dict(zip(cols, row))
+        return data
+
+    def get_categories(self, table):
+        """
+        Gets list of categorical and numerical variables from table
+        table must be in form table_name(Variable, IsCategorical)
+        :param table: table containing data
+        :return: dictionary containing lists of categorical and numerical variables
+        """
+
+        # Get table
+        data = self.get_table(table)
+
+        # Categories
+        variables = {'categorical': list(), 'numerical': list()}
+        for v in data:
+            if int(data[v]['IsCategorical']) == 1:
+                variables['categorical'].append(data[v]['Variable'])
+            else:
+                variables['numerical'].append(data[v]['Variable'])
+        return variables
+
+    def get_category_levels(self, table, variables):
+        data = dict()
+        for v in variables['categorical']:
+            data[v] = list()
+            sql_command = "select %s, count(1) from %s group by %s" % (v, table, v)
+            for row in self.cursor.execute(sql_command):
+                data[v].append((row[0], float(row[1])))
+        return data
+
+    def get_numerical_metrics(self, table, variables):
+        data = dict()
+        metrics = ['mean', 'var']
+        for v in variables['numerical']:
+            sql_command = "select avg(%s), var(%s) from %s" % (v, v, table)
+            for row in self.cursor.execute(sql_command):
+                data[v] = dict(zip(metrics, row))
+        return data
 
 
-def build_db_data_dictionary(cursor, table):
-    data = dict()
-    sql_command = "select * from %s" % table
-    cursor.execute(sql_command)
-    cols = [column[0] for column in cursor.description]
-    for row in cursor.fetchall():
-        data[row[0]] = dict(zip(cols, row))
-    return data
-
-
-def get_db_category_levels(cursor, table, variables):
-    data = dict()
-    for v in variables['categorical']:
-        data[v] = list()
-        sql_command = "select %s, count(1) from %s group by %s" % (v, table, v)
-        for row in cursor.execute(sql_command):
-            data[v].append((row[0], float(row[1])))
-    return data
-
-
-def get_db_numerical_metrics(cursor, table, variables):
-    data = dict()
-    metrics = ['mean', 'var']
-    for v in variables['numerical']:
-        sql_command = "select avg(%s), var(%s) from %s" % (v, v, table)
-        for row in cursor.execute(sql_command):
-            data[v] = dict(zip(metrics, row))
-    return data
-
-
-def get_data_from_db(server, database, entity_data_table, variable_classification_table, uid=None, pwd=None):
-    con, cursor = connect_to_database(server, database, uid, pwd)
-    classification = grab_db_categories(cursor, variable_classification_table)
-    entity_data = build_db_data_dictionary(cursor, entity_data_table)
-    categorical = get_db_category_levels(cursor, entity_data_table, classification)
-    numerical = get_db_numerical_metrics(cursor, entity_data_table, classification)
-    db_data = dict()
-    db_data['entity_data'] = entity_data
-    db_data['categorical_data'] = categorical
-    db_data['numerical_data'] = numerical
-    return db_data
-
-
-def grab_ff_categories(filename):
+def grab_ff_categories(filename, delimiter='\t'):
     variables = {'categorical': list(), 'numerical': list()}
     with open(filename, 'r') as f:
         f.readline()
         while True:
-            line = f.readline()
-            if not line:
+            items = split_next_line(f, delimiter)
+            if items is None:
                 break
-            line = line.strip()
-            items = csv.reader([line], delimiter='\t').next()
             if int(items[1]) == 1:
                 variables['categorical'].append(items[0])
             else:
@@ -89,20 +149,20 @@ def grab_ff_categories(filename):
     return variables
 
 
-def split_next_line(f):
+def split_next_line(f, delimiter):
     line = f.readline()
     if not line:
         return None
     line = line.strip()
-    return csv.reader([line], delimiter='\t').next()
+    return csv.reader([line], delimiter).next()
 
 
 def build_ff_data_dictionary(filename, classification):
     data = dict()
     with open(filename, 'r') as f:
-        headers = split_next_line(f)
+        headers = split_next_line(f, '\t')
         while True:
-            items = split_next_line(f)
+            items = split_next_line(f, '\t')
             if items is None:
                 break
             data[items[0]] = dict(zip(headers, items))
