@@ -1,4 +1,4 @@
-Opti-Group
+pygroup
 ===============
 
 This software takes a set of entities and divides them into equal groups based on numeric and categorical variables.
@@ -9,7 +9,7 @@ This software takes a set of entities and divides them into equal groups based o
 
 It is based on a similar, Excel based solution: group-allocator (https://github.com/odow/group-allocator). 
 
-Opti-Group can read data either from a database or tab-delimited flat files.
+pygroup can read data either from a database or tab-delimited flat files.
 
 Check the example.py file for usage and instructions.
 
@@ -22,7 +22,7 @@ Check the example.py file for usage and instructions.
 https://code.google.com/p/pyodbc/downloads/list
 
 ## Files
-+ pyog.py - python code
++ pygroup.py - python code
 + example.py - example usage
 + classification.txt - example file showing format. Used by example.py
 + entity_data.txt - example file showing format. Used by example.py

@@ -1,9 +1,9 @@
 #
-# Example usage of opti-group
+# Example usage of pygroup
 #
 # Copyright (C) 2014,  Oscar Dowson
 #
-import pyog
+import pygroup
 
 #
 # There should be two tables in your database.
@@ -35,10 +35,10 @@ import pyog
 # ====================================================================================================================
 f_entity = 'example_files/entity_data.txt'                # name of entity_classification_table
 f_class = 'example_files/classification.txt'              # name of entity_classification_table
-data1 = pyog.FlatFile(f_class, f_entity)    # data object
+data1 = pygroup.FlatFile(f_class, f_entity)    # data object
 n_groups = 2                                # number of groups to divide into
 time_limit = 5                              # time limit for optimisation (seconds)
-partition_model = pyog.PartitionModel(data1, n_groups)
+partition_model = pygroup.PartitionModel(data1, n_groups)
 allocation, quality = partition_model.solve(time_limit)
 print allocation
 print quality
@@ -49,10 +49,10 @@ server = '.'                # location of server. '.' = localhost
 database = 'enggen403'      # name of database
 entity_tab = 'class_data'   # name of entity_classification_table
 class_tab = 'categories'    # name of entity_classification_table
-data_a = pyog.DataBase(server, database, entity_tab, class_tab, where='ID > 200')
+data_a = pygroup.DataBase(server, database, entity_tab, class_tab, where='ID > 200')
 n_people = 10
-data_b = pyog.DataBase(server, database, entity_tab, class_tab, where='ID <= 200')
-distribution_model = pyog.DistributionModel(data_a, data_b, n_people)
+data_b = pygroup.DataBase(server, database, entity_tab, class_tab, where='ID <= 200')
+distribution_model = pygroup.DistributionModel(data_a, data_b, n_people)
 allocation1, quality1 = distribution_model.solve(time_limit)
 print allocation1
 print quality1
