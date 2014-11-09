@@ -5,9 +5,6 @@
 #
 import pyog
 
-
-# Set this flag to true if you have data in a database
-
 #
 # There should be two tables in your database.
 # One containing the entity data, and the other declaring the variables
@@ -36,14 +33,15 @@ import pyog
 
 # ====================================================================================================================
 # ====================================================================================================================
-f_entity = 'entity_data.txt'                # name of entity_classification_table
-f_class = 'classification.txt'              # name of entity_classification_table
-data1 = pyog.FlatFile(f_class, f_entity)  # data object
+f_entity = 'example_files/entity_data.txt'                # name of entity_classification_table
+f_class = 'example_files/classification.txt'              # name of entity_classification_table
+data1 = pyog.FlatFile(f_class, f_entity)    # data object
 n_groups = 2                                # number of groups to divide into
 time_limit = 5                              # time limit for optimisation (seconds)
 partition_model = pyog.PartitionModel(data1, n_groups)
 allocation, quality = partition_model.solve(time_limit)
-
+print allocation
+print quality
 
 # ====================================================================================================================
 # ====================================================================================================================
