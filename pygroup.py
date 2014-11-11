@@ -27,7 +27,7 @@ from pulp import solvers
 
 
 class Model(object):
-
+    
     def __init__(self, name):
         self.model = LpProblem(name, LpMinimize)
         return
