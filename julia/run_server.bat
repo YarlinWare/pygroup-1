@@ -1,0 +1,1 @@
+julia index.jl %cd%

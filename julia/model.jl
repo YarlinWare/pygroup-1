@@ -4,7 +4,7 @@ using DataFrames
 using JuMP
 using Cbc
 
-export PartitionData, CreateData, CreateModel
+export Solve
 
 type PartitionData
   n::Int                                    # Number of entities
@@ -94,6 +94,7 @@ end
 
 function CreateData(fname::String)
   df = readtable(fname)
+
   Ids = df[names(df)[1]]
   vNum = Array(Symbol, 0)
   vCat = Array(Symbol, 0)
@@ -136,6 +137,5 @@ end
 
 end
 
-s = "big_example.csv"
-df = PartitionModel.Solve(s, 20, 10.0)
-
+# s = "big_example.csv"
+# df = PartitionModel.Solve(s, 20, 10.0)

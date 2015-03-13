@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<!-- Basic Page Needs
+		–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+		<meta charset="utf-8">
+		<title>Group Allocator</title>
+		<meta name="description" content="">
+		<meta name="author" content="">
+		<!-- Mobile Specific Metas
+		–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<!-- FONT
+		–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+		<link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+		
+		<!-- CSS
+		–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+		<style>/*css*/</style>
+		
+	</head>
+	<body>
+		<!-- Primary Page Layout
+		–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+		<div class="header">
+			<div class="container">
+				<div class="row">
+					<h1>Group Allocator</h1>
+					<p>An optimisation tool for sorting people into equitable groups.</p>
+				</div>
+			</div>
+		</div>
+		<div id="div_input">
+			<div class="container padding">
+				<div class="row">
+					<form id="upload" action="/" method="POST" enctype="multipart/form-data">
+						<h3>Choose file</h3>
+						<p>This must be a plain text file either comma delimited (.csv) or tab delimited (.tsv). You can create a file like this by choosing <i>Save As > Comma Separated File (.csv)</i> in Microsoft Excel. Have a look at <a href="/examples/example_file.csv" download="group-allocator_example.csv">this example file</a> to see what you need.</p>
+						<input type="file" id="fileselect" name="fileselect" />
+						<div id="filedrag">or drop .csv file here</div>
+						<div id="submitbutton">
+							<button type="submit">Upload Files</button>
+						</div>
+					</form>
+				</div>
+			</div>
+			<form id="solveForm" action="/solve" method="POST">
+				<div class="container padding">
+					<div class="row">
+						<div class="one-half column">
+							<h3>Time limit (sec)</h3>
+							<p>Set the time limit for the model to solve. <input type="number" name="timelimit" min="0" value="10" /></p>
+						</div>
+						<div class="one-half column">
+							<h3>Number of Groups</h3>
+							<p>Set the number of groups to partition into. <input type="number" name="ngroups" min="1" value="2" step="1"/></p>
+						</div>
+					</div>
+				</div>
+				<div class="container padding">
+					<div class="center" id="submitbutton">
+						<button  class="button-primary button" type="submit" onclick="document.getElementById('solveForm').submit();">Run Optimisation</button>
+					</div>
+					<input type="hidden" id="input_filename" name="input_filename" value=""/>
+				</div>
+			</form>
+		</div>
+		<div id="div_output" style="display: {{output_class}};">
+			<div class="container padding">
+				<div class="row">
+					<h3>Download Results</h3>
+					<p>Success! You model was successfully solved. Click the <b>Download Results</b> button to download your csv file. The group number has been added as an extra column.</p>
+					<div class="center">
+						<a href="{{results_file}}" download="group-allocator_results.csv"><input class="button" type="button" value="Download Results" /></a>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="footer">
+			<div class="container">
+				<div class="row">
+					<p><a href="mailto:odow003@aucklanduni.ac.nz" id="skeleton_link">Oscar Dowson</a>, <a href="mailto:mfai035@aucklanduni.ac.nz" id="skeleton_link">Michael Fairley</a>. The University of Auckland, 2014-2015</p>
+					<p>Made with <a href="http://getskeleton.com/" id="skeleton_link">Skeleton</a></p>
+				</div>
+			</div>
+		</div>
+		<script src="js/filedrag.js"></script>
+		<!-- End Document
+		–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+	</body>
+</html>
